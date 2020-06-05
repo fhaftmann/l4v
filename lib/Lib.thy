@@ -2572,11 +2572,7 @@ lemma int_shiftl_less_cancel:
 
 lemma int_shiftl_lt_2p_bits:
   "0 \<le> (x::int) \<Longrightarrow> x < 1 << n \<Longrightarrow> \<forall>i \<ge> n. \<not> x !! i"
-  apply (clarsimp simp: shiftl_int_def)
-  apply (clarsimp simp: bin_nth_eq_mod even_iff_mod_2_eq_zero)
-  apply (drule_tac z="2^i" in less_le_trans)
-   apply simp
-  apply simp
+  apply (clarsimp simp: shiftl_int_def bit_def power_add zdiv_zmult2_eq dest!: le_Suc_ex)
   done
 \<comment> \<open>TODO: The converse should be true as well, but seems hard to prove.\<close>
 
