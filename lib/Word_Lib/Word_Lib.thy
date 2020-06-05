@@ -245,9 +245,8 @@ lemmas p2len = iffD2 [OF p2_eq_0 order_refl]
 lemma and_mask_arith:
   "w AND mask n = (w * 2^(size w - n)) div 2^(size w - n)"
   apply (cases "0 < n")
-   apply (erule and_mask_arith')
+   apply (auto elim!: and_mask_arith')
   apply (simp add: word_size)
-  apply (simp add: word_of_int_hom_syms word_div_def)
   done
 
 lemma mask_2pm1: "mask n = 2 ^ n - 1"
@@ -290,7 +289,7 @@ lemma le_shiftr1:
   done
 
 lemma le_shiftr:
-  "u \<le> v \<Longrightarrow> u >> (n :: nat) \<le> (v :: 'a :: len0 word) >> n"
+  "u \<le> v \<Longrightarrow> u >> (n :: nat) \<le> (v :: 'a :: len word) >> n"
   apply (unfold shiftr_def)
   apply (induct_tac "n")
    apply auto
@@ -306,7 +305,7 @@ lemma shiftr_mask_le:
 lemmas shiftr_mask = order_refl [THEN shiftr_mask_le, simp]
 
 lemma word_leI:
-  "(\<And>n.  \<lbrakk>n < size (u::'a::len0 word); u !! n \<rbrakk> \<Longrightarrow> (v::'a::len0 word) !! n) \<Longrightarrow> u <= v"
+  "(\<And>n.  \<lbrakk>n < size (u::'a::len word); u !! n \<rbrakk> \<Longrightarrow> (v::'a::len word) !! n) \<Longrightarrow> u <= v"
   apply (rule xtr4)
    apply (rule word_and_le2)
   apply (rule word_eqI)
@@ -393,7 +392,7 @@ lemmas mask_lt_2pn =
   le_mask_iff_lt_2n [THEN iffD1, THEN iffD1, OF _ order_refl]
 
 lemma bang_eq:
-  fixes x :: "'a::len0 word"
+  fixes x :: "'a::len word"
   shows "(x = y) = (\<forall>n. x !! n = y !! n)"
   by (subst test_bit_eq_iff[symmetric]) fastforce
 
@@ -511,22 +510,52 @@ lemma word_and_max_word:
   shows "x = max_word \<Longrightarrow> a AND x = a"
   by simp
 
-(* Simplifying with word_and_max_word and max_word_def works for arbitrary word sizes,
-   but the conditional rewrite can be slow when combined with other common rewrites on
-   word expressions. If we are willing to limit our attention to common word sizes,
-   the following will usually be much faster. *)
-lemmas word_and_max_simps[simplified max_word_def, simplified] =
-  word_and_max[where 'a=8] word_and_max[where 'a=16] word_and_max[where 'a=32] word_and_max[where 'a=64]
+lemma word_and_full_mask_simp:
+  \<open>x && Bit_Operations.mask LENGTH('a) = x\<close> for x :: \<open>'a::len word\<close>
+proof (rule bit_eqI)
+  fix n
+  assume \<open>2 ^ n \<noteq> (0 :: 'a word)\<close>
+  then have \<open>n < LENGTH('a)\<close>
+    by simp
+  then show \<open>bit (x && Bit_Operations.mask LENGTH('a)) n \<longleftrightarrow> bit x n\<close>
+    by (simp add: bit_and_iff bit_mask_iff)
+qed
+	
+lemma word8_and_max_simp:
+  \<open>x && 0xFF = x\<close> for x :: \<open>8 word\<close>
+  using word_and_full_mask_simp [of x]
+  by (simp add: numeral_eq_Suc mask_Suc_exp)
+	
+lemma word16_and_max_simp:
+  \<open>x && 0xFFFF = x\<close> for x :: \<open>16 word\<close>
+  using word_and_full_mask_simp [of x]
+  by (simp add: numeral_eq_Suc mask_Suc_exp)
+	
+lemma word32_and_max_simp:
+  \<open>x && 0xFFFFFFFF = x\<close> for x :: \<open>32 word\<close>
+  using word_and_full_mask_simp [of x]
+  by (simp add: numeral_eq_Suc mask_Suc_exp)
+	
+lemma word64_and_max_simp:
+  \<open>x && 0xFFFFFFFFFFFFFFFF = x\<close> for x :: \<open>64 word\<close>
+  using word_and_full_mask_simp [of x]
+  by (simp add: numeral_eq_Suc mask_Suc_exp)
+	
+lemmas word_and_max_simps =
+  word8_and_max_simp
+  word16_and_max_simp
+  word32_and_max_simp
+  word64_and_max_simp
 
 lemma word_and_1_bl:
   fixes x::"'a::len word"
   shows "(x AND 1) = of_bl [x !! 0]"
-  by (simp add: word_and_1)
+  by (simp add: mod_2_eq_odd test_bit_word_eq and_one_eq)
 
 lemma word_1_and_bl:
   fixes x::"'a::len word"
   shows "(1 AND x) = of_bl [x !! 0]"
-  by (subst word_bw_comms) (simp add: word_and_1)
+  by (simp add: mod_2_eq_odd test_bit_word_eq one_and_eq)
 
 lemma scast_scast_id [simp]:
   "scast (scast x :: ('a::len) signed word) = (x :: 'a word)"
